@@ -22,7 +22,11 @@ dbutils.fs.mkdirs(IMG_OUTPUT_DIR)
   comment="Raw videos to be processed"
 )
 def videos_raw():
-  return (spark.read.format("binaryFile").option("pathGlobFilter", "*{}".format(".mov")).load("dbfs:/databricks-datasets-private/ML/stanford_drone/videos/").withColumn("path", regexp_replace("path", "dbfs:/", "/dbfs/")).select("path", "modificationTime", "length"))
+  return (
+    spark.read.format("binaryFile") \
+    .option("pathGlobFilter", "*{}".format(".mov")) \
+    .load("dbfs:/databricks-datasets-private/ML/stanford_drone/videos/") \
+    .withColumn("path", regexp_replace("path", "dbfs:/", "/dbfs/")).select("path", "modificationTime", "length")) 
 
 # COMMAND ----------
 
@@ -58,3 +62,13 @@ def split_videos():
     return x.apply(extract_image)
 
   return (dlt.read("videos_raw").withColumn("output_path", extract_images(col("path"))))
+
+# COMMAND ----------
+
+@dlt.table
+def images():
+  return (
+  spark.readStream.format("cloudFiles").option("cloudFiles.format", "binaryFile").option("recursiveFileLookup", "true") \
+  .option("pathGlobFilter", "*.jpg") \
+  .load(IMG_OUTPUT_DIR) 
+  )
